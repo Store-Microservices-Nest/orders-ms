@@ -19,13 +19,13 @@ export class OrdersController {
   }
 
   @MessagePattern('findOneOrder')
-  findOne(@Payload() id: number) {
+  findOne(@Payload('id') id: number) {
     return this.ordersService.findOne(id);
   }
 
-  @MessagePattern('changeOrderStatus')
-  changeOrderStatus() {
-    // return this,this.ordersService.updateOrder()
-    throw new NotImplementedException();
-  }
+  // @MessagePattern('changeOrderStatus')
+  // changeOrderStatus() {
+  //   // return this,this.ordersService.updateOrder()
+  //   throw new NotImplementedException();
+  // }
 }
