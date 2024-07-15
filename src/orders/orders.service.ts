@@ -10,7 +10,7 @@ import { UpdateOrderDto } from './dto/update-order.dto';
 import { PrismaClient } from '@prisma/client';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { OrderPaginationDto } from './dto/order-pagination.dto';
-import { ChangeOrderStatusDto } from './dto';
+import { ChangeOrderStatusDto, PaidOrderDto } from './dto';
 import { NATS_SERVICE, PRODUCT_SERVICE } from 'src/config';
 import { firstValueFrom } from 'rxjs';
 import { OrderWithProducts } from './interfaces/orders-with-products.interface';
@@ -19,9 +19,7 @@ import { OrderWithProducts } from './interfaces/orders-with-products.interface';
 export class OrdersService extends PrismaClient implements OnModuleInit {
   private readonly logger = new Logger('OrderService');
 
-  constructor(
-    @Inject(NATS_SERVICE) private readonly client: ClientProxy,
-  ) {
+  constructor(@Inject(NATS_SERVICE) private readonly client: ClientProxy) {
     super();
   }
   async onModuleInit() {
@@ -172,20 +170,43 @@ export class OrdersService extends PrismaClient implements OnModuleInit {
     });
   }
 
-
-  async createPaymentSession(order: OrderWithProducts){
-
-    const paymentSession =  await firstValueFrom(
-      this.client.send('create.payment.session',{
+  async createPaymentSession(order: OrderWithProducts) {
+    const paymentSession = await firstValueFrom(
+      this.client.send('create.payment.session', {
         orderId: order.id,
         currency: 'usd',
-        items: order.OrderItem.map(item => ({
+        items: order.OrderItem.map((item) => ({
           name: item.name,
           price: item.price,
-          quantity: item.quantity
-        }))
-      } ));
+          quantity: item.quantity,
+        })),
+      }),
+    );
 
-      return paymentSession;
+    return paymentSession;
+  }
+
+  async markOrderAsPaid(paidOrderDto: PaidOrderDto) {
+    this.logger.log('Paid Order');
+    this.logger.log(paidOrderDto);
+
+    const updatedOrder = await this.order.update({
+      where: { id: paidOrderDto.orderId },
+      data: {
+        status: 'PAID',
+        paid: true,
+        paidAt: new Date(),
+        stripeChargeId: paidOrderDto.stripePaymentId,
+
+        //Relation
+        OrderReceipt: {
+          create: {
+            receiptUrl: paidOrderDto.receiptUrl,
+          },
+        },
+      },
+    });
+
+    return { ...updatedOrder };
   }
 }
