@@ -1,20 +1,20 @@
 steps:
-  - name: "gcr.io/cloud-builders/docker"
-    args:
-      [
-        "build",
-        "-t",
-        "us-central1-docker.pkg.dev/store-microservices-430114/store-image-registry/orders-ms",
-        "-f",
-        "dockerfile.prod",
-        "--platform=linux/amd64",
-        ".",
-      ]
-  - name: "gcr.io/cloud-builders/docker"
-    args:
-      [
-        "push",
-        "us-central1-docker.pkg.dev/store-microservices-430114/store-image-registry/orders-ms",
-      ]
-options:
-  logging: CLOUD_LOGGING_ONLY
+- name: 'gcr.io/cloud-builders/docker'
+  entrypoint: 'bash'
+  args:
+    - -c
+    - |
+      docker build -t us-central1-docker.pkg.dev/store-microservices-430114/store-image-registry/auth-ms -f dockerfile.prod --platform=linux/amd64 --build-arg ORDERS_DATABASE_URL=$$DATABASE_URL .
+  secretEnv: ['DATABASE_URL']
+
+- name: 'gcr.io/cloud-builders/docker'
+  args:
+    [
+      'push',
+      'us-central1-docker.pkg.dev/store-microservices-430114/store-image-registry/auth-ms',
+    ]
+
+availableSecrets:
+  secretManager:
+  - versionName: projects/952585228593/secrets/ORDERS_DATABASE_URL/versions/1
+    env: 'DATABASE_URL'
